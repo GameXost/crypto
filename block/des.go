@@ -147,7 +147,3 @@ func (DESRoundFunction) Apply(right, roundKey []byte) ([]byte, error) {
 	}
 	return result, nil
 }
-
-var _ KeyExpander = DESKeyExpander{}
-var _ RoundFunction = DESRoundFunction{}
-var _ BlockCipher = (*DES)(nil)

@@ -2,7 +2,6 @@ package symmetric
 
 import "cryp/block"
 
-// CBC и PCBC используют общий цикл; propagate включает обратную связь PCBC.
 func encryptChained(data []byte, cipher block.BlockCipher, iv []byte, propagate bool) ([]byte, error) {
 	blockSize := cipher.BlockSize()
 	result := make([]byte, len(data))

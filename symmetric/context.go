@@ -66,10 +66,6 @@ func (c *CipherContext) applyOptions(options []Option) error {
 	return nil
 }
 
-func (c *CipherContext) prefixesIV() bool {
-	return c.mode != ECB && c.mode != RandomDelta && c.iv == nil
-}
-
 func (c *CipherContext) Encrypt(data []byte) ([]byte, error) {
 	if c == nil || c.cipher == nil {
 		return nil, fmt.Errorf("cipher context is not initialized")
@@ -88,6 +84,10 @@ func (c *CipherContext) Encrypt(data []byte) ([]byte, error) {
 		result = append(iv, result...)
 	}
 	return result, nil
+}
+
+func (c *CipherContext) prefixesIV() bool {
+	return c.mode != ECB && c.iv == nil
 }
 
 func (c *CipherContext) encryptionIV() []byte {
@@ -109,12 +109,6 @@ func (c *CipherContext) operationState(iv []byte, decrypt bool) *modeState {
 }
 
 func (c *CipherContext) transformMode(data, iv []byte, decrypt bool) ([]byte, error) {
-	if c.mode == RandomDelta {
-		if decrypt {
-			return decryptRandomDelta(data, c.cipher, c.workers)
-		}
-		return encryptRandomDelta(data, c.cipher, iv, c.workers)
-	}
 	return c.operationState(iv, decrypt).transform(data)
 }
 
@@ -132,6 +126,9 @@ func (c *CipherContext) Decrypt(data []byte) ([]byte, error) {
 			return nil, fmt.Errorf("ciphertext is missing its IV")
 		}
 		iv, data = data[:blockSize], data[blockSize:]
+	}
+	if err := validateIV(c.mode, iv, blockSize); err != nil {
+		return nil, err
 	}
 	result, err := c.transformMode(data, iv, true)
 	if err != nil {

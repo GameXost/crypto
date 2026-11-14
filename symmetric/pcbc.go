@@ -1,6 +1,5 @@
 package symmetric
 
-// Снятие цепочки CBC/PCBC после блочного дешифрования.
 func unchainBlocks(data, result, feedback []byte, propagate bool) {
 	blockSize := len(feedback)
 	for offset := 0; offset < len(data); offset += blockSize {

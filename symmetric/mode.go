@@ -26,10 +26,6 @@ func encryptBlock(data []byte, cipher block.BlockCipher) ([]byte, error) {
 	return transformBlock(data, cipher.EncryptBlock)
 }
 
-func decryptBlock(data []byte, cipher block.BlockCipher) ([]byte, error) {
-	return transformBlock(data, cipher.DecryptBlock)
-}
-
 func transformBlock(data []byte, transform func([]byte) ([]byte, error)) ([]byte, error) {
 	result, err := transform(data)
 	if err != nil {
@@ -58,11 +54,4 @@ func addCounter(counter, step []byte) {
 		counter[i] = byte(sum)
 		ost = sum >> 8
 	}
-}
-
-func validateCounterPeriod(dataLen, blockSize int) error {
-	if blockSize < 8 && uint64(dataLen/blockSize) > uint64(1)<<(8*blockSize) {
-		return fmt.Errorf("message exceeds the counter period")
-	}
-	return nil
 }

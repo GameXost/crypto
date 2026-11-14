@@ -26,16 +26,8 @@ func (c *CipherContext) streamIV(input io.Reader, output io.Writer, decrypt bool
 		return c.readStreamIV(input)
 	}
 	iv := c.encryptionIV()
-	header := iv
-	if c.mode == RandomDelta {
-		var err error
-		header, err = encryptBlock(iv, c.cipher)
-		if err != nil {
-			return nil, err
-		}
-	}
-	if c.prefixesIV() || c.mode == RandomDelta {
-		if err := writeStream(output, header); err != nil {
+	if c.prefixesIV() {
+		if err := writeStream(output, iv); err != nil {
 			return nil, err
 		}
 	}
@@ -43,22 +35,15 @@ func (c *CipherContext) streamIV(input io.Reader, output io.Writer, decrypt bool
 }
 
 func (c *CipherContext) readStreamIV(input io.Reader) ([]byte, error) {
-	if !c.prefixesIV() && c.mode != RandomDelta {
+	if !c.prefixesIV() {
 		return c.iv, nil
 	}
 	iv := make([]byte, c.cipher.BlockSize())
 	if _, err := io.ReadFull(input, iv); err != nil {
 		return nil, fmt.Errorf("read IV: %w", err)
 	}
-	if c.mode == RandomDelta {
-		var err error
-		iv, err = decryptBlock(iv, c.cipher)
-		if err != nil {
-			return nil, err
-		}
-		if err := validateRandomDeltaIV(iv, c.cipher.BlockSize()); err != nil {
-			return nil, err
-		}
+	if err := validateIV(c.mode, iv, c.cipher.BlockSize()); err != nil {
+		return nil, err
 	}
 	return iv, nil
 }

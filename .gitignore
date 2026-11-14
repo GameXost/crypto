@@ -1,0 +1,5 @@
+/.idea/
+/des_demo/
+/testdata/des-demo/*
+!/testdata/des-demo/*.txt
+!/testdata/des-demo/*.go

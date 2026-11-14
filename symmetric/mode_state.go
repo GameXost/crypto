@@ -76,7 +76,7 @@ func (s *modeState) transformBlocks(data []byte) ([]byte, error) {
 	case CTR:
 		return transformCTR(data, s.cipher, s.feedback)
 	case RandomDelta:
-		return transformRandomDelta(data, s.cipher, s.feedback, s.delta, s.decrypt)
+		return transformRandomDelta(data, s.cipher, s.feedback, s.delta)
 	default:
 		return nil, fmt.Errorf("unknown mode %d", s.mode)
 	}

@@ -47,7 +47,7 @@ func (d *DEAL) transform(data []byte, decrypt bool) ([]byte, error) {
 	if decrypt {
 		result, err = d.network.DecryptBlock(data)
 	} else {
-		// В DEAL F получает левую половину, а в общем ядре — правую.
+
 		result, err = d.network.EncryptBlock(swapDEALHalves(data))
 	}
 	if err != nil {
@@ -89,7 +89,7 @@ func (DEALKeyExpander) ExpandKey(key []byte) ([][]byte, error) {
 			mixed[i] = part[i] ^ previous[i]
 		}
 		if round >= parts {
-			// Байтовые маски профиля Cryptix: 80, 40, 20, 10 в первом байте.
+
 			mixed[0] ^= byte(0x80 >> (round - parts))
 		}
 		roundKeys[round], err = cipher.EncryptBlock(mixed)
@@ -119,7 +119,7 @@ func (DESRoundAdapter) Apply(data, roundKey []byte) ([]byte, error) {
 	if len(roundKey) != 8 {
 		return nil, fmt.Errorf("DEAL round: %w: got %d bytes, want 8", ErrInvalidKeySize, len(roundKey))
 	}
-	// shortcut: расписание DES строится на каждом раунде; перенести в SetKey при проблемах со скоростью.
+
 	cipher, err := NewDES()
 	if err != nil {
 		return nil, fmt.Errorf("create DEAL round cipher: %w", err)
@@ -129,7 +129,3 @@ func (DESRoundAdapter) Apply(data, roundKey []byte) ([]byte, error) {
 	}
 	return cipher.EncryptBlock(data)
 }
-
-var _ KeyExpander = DEALKeyExpander{}
-var _ RoundFunction = DESRoundAdapter{}
-var _ BlockCipher = (*DEAL)(nil)

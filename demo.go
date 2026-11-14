@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"math/rand"
@@ -25,6 +26,93 @@ var demoModes = []namedMode{
 	{"OFB", symmetric.OFB},
 	{"CTR", symmetric.CTR},
 	{"RandomDelta", symmetric.RandomDelta},
+}
+
+func runDemo(name string, inputs []string, workers int, stdout io.Writer) error {
+	if workers < 1 {
+		return fmt.Errorf("workers must be positive")
+	}
+	cipher, key, err := newDemoCipher(name)
+	if err != nil {
+		return err
+	}
+	if err := validateInputs(inputs); err != nil {
+		return err
+	}
+	output, err := filepath.Abs(filepath.Join(outputDirectory, "_results", name))
+	if err != nil {
+		return err
+	}
+	if err := validateOutputInputs(inputs, output); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(output, 0700); err != nil {
+		return fmt.Errorf("create output directory: %w", err)
+	}
+	if err := writeReport(stdout, "\n%s | PKCS7 | workers=%d\nРезультаты: %s\n", name, workers, output); err != nil {
+		return err
+	}
+	return demonstrate(cipher, key, inputs, output, workers, stdout)
+}
+
+func validateInputs(paths []string) error {
+	if len(paths) == 0 {
+		return fmt.Errorf("at least one input file is required")
+	}
+	for _, path := range paths {
+		info, err := os.Stat(path)
+		if err != nil {
+			return fmt.Errorf("input %q: %w", path, err)
+		}
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("input %q must be a regular file", path)
+		}
+	}
+	return nil
+}
+
+func validateOutputInputs(inputs []string, output string) error {
+	infos := make([]os.FileInfo, len(inputs))
+	for i, input := range inputs {
+		info, err := os.Stat(input)
+		if err != nil {
+			return err
+		}
+		infos[i] = info
+	}
+	for _, mode := range demoModes {
+		directory := filepath.Join(output, mode.name)
+		for i, input := range inputs {
+			name := fmt.Sprintf("%02d-%s", i+1, filepath.Base(input))
+			for _, path := range []string{filepath.Join(directory, name+".enc"), filepath.Join(directory, "restored-"+name)} {
+				info, err := os.Stat(path)
+				if errors.Is(err, os.ErrNotExist) {
+					continue
+				}
+				if err != nil {
+					return fmt.Errorf("check output %q: %w", path, err)
+				}
+				for j, inputInfo := range infos {
+					if os.SameFile(info, inputInfo) {
+						return fmt.Errorf("output %q would overwrite input %q", path, inputs[j])
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func writeReport(output io.Writer, format string, args ...any) error {
+	text := fmt.Sprintf(format, args...)
+	n, err := io.WriteString(output, text)
+	if err != nil {
+		return fmt.Errorf("write report: %w", err)
+	}
+	if n != len(text) {
+		return io.ErrShortWrite
+	}
+	return nil
 }
 
 func newDemoCipher(name string) (block.BlockCipher, []byte, error) {
@@ -66,7 +154,7 @@ func demonstrateMode(c *symmetric.CipherContext, mode namedMode, inputs []string
 		return err
 	}
 	directory := filepath.Join(output, mode.name)
-	if err := os.Mkdir(directory, 0700); err != nil {
+	if err := os.MkdirAll(directory, 0700); err != nil {
 		return err
 	}
 	return demonstrateFiles(c, mode.name, inputs, directory, stdout)
@@ -107,10 +195,10 @@ func demoBytes(c *symmetric.CipherContext, data []byte) error {
 }
 
 func demoFile(c *symmetric.CipherContext, input, encrypted, restored string) error {
-	if err := <-c.EncryptFileAsync(input, encrypted, false); err != nil {
+	if err := <-c.EncryptFileAsync(input, encrypted, true); err != nil {
 		return fmt.Errorf("encrypt file: %w", err)
 	}
-	if err := <-c.DecryptFileAsync(encrypted, restored, false); err != nil {
+	if err := <-c.DecryptFileAsync(encrypted, restored, true); err != nil {
 		return fmt.Errorf("decrypt file: %w", err)
 	}
 	return compareFiles(input, restored)

@@ -1,6 +1,5 @@
 package symmetric
 
-// Mode identifies the block cipher mode.
 type Mode uint8
 
 const (
@@ -13,7 +12,6 @@ const (
 	RandomDelta
 )
 
-// Padding identifies the padding scheme.
 type Padding uint8
 
 const (
